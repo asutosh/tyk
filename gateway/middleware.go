@@ -703,33 +703,33 @@ func (t BaseMiddleware) CheckSessionAndIdentityForValidKey(originalKey string, r
 
 	// Only search in RPC if it's not in emergency mode
 	t.Logger().Debug("Querying authstore")
+
 	// 2. If not there, get it from the AuthorizationHandler
 	session, found = t.Spec.AuthManager.SessionDetail(t.Spec.OrgID, key, false)
-	if found {
-		key = session.KeyID
-
-		session := session.Clone()
-		session.SetKeyHash(keyHash)
-		// If not in Session, and got it from AuthHandler, create a session with a new TTL
-		t.Logger().Info("Recreating session for key: ", t.Gw.obfuscateKey(key))
-
-		// cache it
-		if !t.Spec.GlobalConfig.LocalSessionCache.DisableCacheSessionState {
-			go t.Gw.SessionCache.Set(cacheKey, session, cache.DefaultExpiration)
-		}
-
-		// Check for a policy, if there is a policy, pull it and overwrite the session values
-		if err := t.ApplyPolicies(&session); err != nil {
-			t.Logger().Error(err)
-			return session, false
-		}
-
-		t.Logger().Debug("Lifetime is: ", session.Lifetime(t.Spec.SessionLifetime, t.Gw.GetConfig().ForceGlobalSessionLifetime, t.Gw.GetConfig().GlobalSessionLifetime))
-		ctxScheduleSessionUpdate(r)
-	} else {
+	if !found {
 		// defaulting
 		session.KeyID = key
+		return session, found
 	}
+
+	key = session.KeyID
+	session.SetKeyHash(keyHash)
+	// If not in Session, and got it from AuthHandler, create a session with a new TTL
+	t.Logger().Info("Recreating session for key: ", t.Gw.obfuscateKey(key))
+
+	// cache it
+	if !t.Spec.GlobalConfig.LocalSessionCache.DisableCacheSessionState {
+		go t.Gw.SessionCache.Set(cacheKey, session, cache.DefaultExpiration)
+	}
+
+	// Check for a policy, if there is a policy, pull it and overwrite the session values
+	if err := t.ApplyPolicies(&session); err != nil {
+		t.Logger().Error(err)
+		return session, false
+	}
+
+	t.Logger().Debug("Lifetime is: ", session.Lifetime(t.Spec.SessionLifetime, t.Gw.GetConfig().ForceGlobalSessionLifetime, t.Gw.GetConfig().GlobalSessionLifetime))
+	ctxScheduleSessionUpdate(r)
 
 	return session, found
 }
