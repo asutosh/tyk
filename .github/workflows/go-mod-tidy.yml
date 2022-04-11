@@ -27,7 +27,7 @@ jobs:
           if git status --porcelain -uno | grep  -E "go.mod|go.sum"
           then
             git add go.mod go.sum
-            git commit -a -m "[CI] Updating go deps.(go mod tidy)"
+            git commit -m "[CI] Updating go deps.(go mod tidy)"
             git push origin
             echo "::debug::Successfully updated go deps. ${GITHUB_REF##*/}"
             exit 0
